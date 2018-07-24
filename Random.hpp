@@ -20,7 +20,6 @@ struct Random
     static vec3 unitSphere ()
         { // Rays :: randomUnitSphere
         std::uniform_real_distribution<real> dist (-1.0f, 1.0f);
-
         vec3 candidate { };
         do  { // while candidate is not in unit sphere
             candidate = 2.0f * vec3 { dist(rng), dist(rng), dist(rng) };

@@ -17,7 +17,7 @@
  *  against pieces of the scene
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
- #include "Math.hpp"
+#include "Math.hpp"
 
 struct Ray
     {  // Ray
@@ -29,25 +29,20 @@ struct Ray
         } // Ray :: trace
     }; // Ray
 
-struct Sphere
-    {  // Sphere
-    vec3 p; // center
-    real r; // radius
-    }; // Sphere
-
-struct Triangle
-    {  // Triangle
-    vec3 a; // corner 1
-    vec3 b; // corner 2
-    vec3 c; // corner 3
-    }; // Triangle
-
 struct Intersection
     {  // Intersection
-    real t; // distance along ray
-    vec3 p; // point in 3D space
-    vec3 n; // normal of collision
+    real t;      // distance along ray
+    vec3 p;      // point in 3D space
+    vec3 n;      // normal of collision
+    uint32_t id; // the intersected object
     }; // Intersection
+
+struct Sphere
+    {  // Sphere
+    vec3 p;      // center
+    real r;      // radius
+    uint32_t id; // object identifier
+    }; // Sphere
 
 Intersection intersect (const Ray& ray, const Sphere& sphere)
     { // Ray -> Sphere intersection
@@ -66,7 +61,7 @@ Intersection intersect (const Ray& ray, const Sphere& sphere)
             {
             vec3 p = ray.trace (t);
             vec3 n = normalise(sphere.p - p);
-            return { t, p, n };
+            return { t, p, n, sphere.id};
             }
         
         t = (-b + sqrt(b * b - a * c)) / a;
@@ -74,19 +69,12 @@ Intersection intersect (const Ray& ray, const Sphere& sphere)
             {
             vec3 p = ray.trace (t);
             vec3 n = normalise(sphere.p - p);
-            return { t, p, n };
+            return { t, p, n, sphere.id };
             }
-
         }
     
     return { -1.0, {}, {}};
 
     } // Ray -> Sphere intersection
-
-Intersection intersect (const Ray& ray, const Triangle& triangle)
-    { // Ray -> Triangle intersection
-    
-    return {};
-    } // Ray -> Triangle intersection
 
 #endif /* Geometric_hpp */
