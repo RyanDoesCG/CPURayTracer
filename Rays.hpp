@@ -39,34 +39,35 @@ struct Rays
     uint32_t samples = 0;
     uint32_t height  = 0;
     uint32_t width   = 0;
-    
-    std::default_random_engine rng;
+
     struct Distributions {
         std::uniform_real_distribution<real> antialiasing { -1.0f, 1.0f };
         std::uniform_real_distribution<real> uniform      {  0.0f, 1.0f };
     } distributions;
     
     std::vector<Sphere> spheres = {
-        { {  1.15f, 000.25f, 1.5f  }, 000.75f, 0 },
+        { {  1.15f, 000.225f, 1.12f  }, 000.75f, 0 },
         { { -0.2f,  000.0f,  1.25f }, 000.50f, 1 },
         { { -0.9f, -0.25f,   1.0f  }, 000.25f, 2 },
         
         { { -0.55f, -0.375f,  0.75f }, 00.125f, 3 },
         { { -0.2f, -0.431875,  0.45f }, 00.0625f, 4 },
-        { {  0.15f, -0.375f,  0.75f }, 00.125f, 5 },
+        { { -0.4f, -0.431975,  0.25f }, 00.0625f, 5 },
+        { {  0.15f, -0.375f,  0.75f }, 00.125f, 6 },
         
-        { {  0.0f, -100.5f,  1.5f  }, 100.00f, 6 }};
+        { {  0.0f, -100.5f,  1.5f  }, 100.00f, 7 }};
         
     std::vector<Material> materials = {
-        {{ distributions.uniform (rng), distributions.uniform (rng), distributions.uniform (rng) },   1.0f, 0.0f, 0.0f },
-        {{ 0.44f, 0.44f, 0.44f }, 0.2f, 3.0f, 0.12f },
-        {{ distributions.uniform (rng), distributions.uniform (rng), distributions.uniform (rng) }, 1.0f, 0.0f, 0.0f },
+        { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
+        {{ 0.44f, 0.44f, 0.44f }, 0.2f, 3.0f, 0.12f, 0.5f },
+        { Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
         
-        {{ distributions.uniform (rng), distributions.uniform (rng), distributions.uniform (rng) }, 1.0f, 0.0f, 0.0f },
-        {{ distributions.uniform (rng), distributions.uniform (rng), distributions.uniform (rng) }, 1.0f, 0.0f, 0.0f },
-        {{ distributions.uniform (rng), distributions.uniform (rng), distributions.uniform (rng)}, 1.0f, 0.0f, 0.0f },
-        
-        {{ 0.22f, 0.22f, 0.22f }, 0.4f, 3.0f, 0.6f }};
+        {Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
+        {Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
+        {Random::color(), 0.3f, 3.0f, 0.0f, 1.0f },
+        {Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
+
+        {{ 0.22f, 0.22f, 0.22f }, 0.4f, 3.0f, 0.6f, 0.5f}};
         
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -81,8 +82,7 @@ struct Rays
             bounces     (_bounces),
             samples     (_samples),
             height      (_height),
-            width       (_width),
-            rng         (time(NULL))
+            width       (_width)
         { // Rays :: Rays
         
         for (std::vector<Ray>& r : rays)
@@ -121,9 +121,9 @@ struct Rays
             vec3 incoming = -rays[y][x].d;
             
             // roughness normal distortion
-            closest.n[0] += distributions.antialiasing(rng) * materials[closest.id].roughness;
-            closest.n[1] += distributions.antialiasing(rng) * materials[closest.id].roughness;
-            closest.n[2] += distributions.antialiasing(rng) * materials[closest.id].roughness;
+            closest.n[0] += distributions.antialiasing(Random::rng) * materials[closest.id].roughness;
+            closest.n[1] += distributions.antialiasing(Random::rng) * materials[closest.id].roughness;
+            closest.n[2] += distributions.antialiasing(Random::rng) * materials[closest.id].roughness;
             
             // random diffuse probe
             rays[y][x].p = closest.p;
@@ -140,14 +140,14 @@ struct Rays
                 materials[closest.id].metallic *
                 materials[closest.id].albedo *
                 fire (x, y, depth - 1);
-            
-            return 0.5 * (diffuse + metallic);
+
+            return materials[closest.id].emissive * (diffuse + metallic);
             
             } // ray hit something
 
         // if no hit was detected, we just return the
         // scenes background color that acts as a luminaire
-        return { 1.0f, 1.0f, 1.0f };
+        return { 0.84f, 0.84f, 0.84f };
 
         } // Rays :: cast
         
@@ -168,8 +168,8 @@ struct Rays
                 
                 for (uint32_t s = 0; s < samples; ++s)
                     { // for each sample
-                    real uoffset = distributions.antialiasing (rng);
-                    real voffset = distributions.antialiasing (rng);
+                    real uoffset = distributions.antialiasing (Random::rng);
+                    real voffset = distributions.antialiasing (Random::rng);
                     real u = -1.0f + (((real(x + uoffset)) / real(width)) * 2.0);
                     real v =  1.0f - (((real(y + voffset)) / real(height)) * 2.0);
                     rays[y][x].p = vec3 { 0.0f, 0.0f, -1.0f };

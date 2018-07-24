@@ -12,13 +12,13 @@
 #include "Math.hpp"
 #include <random>
 
-static std::default_random_engine rng;
-
 struct Random
     {  // Random
     
+    static std::default_random_engine rng;
+    
     static vec3 unitSphere ()
-        { // Rays :: randomUnitSphere
+        { // Random :: randomUnitSphere
         std::uniform_real_distribution<real> dist (-1.0f, 1.0f);
         vec3 candidate { };
         do  { // while candidate is not in unit sphere
@@ -26,8 +26,18 @@ struct Random
             } // while candidate is not in unit sphere
         while (dot(candidate, candidate) >= 1.0f);
         return candidate;
-        } // Rays :: randomUnitSphere
+        } // Random :: randomUnitSphere
+        
+    static vec3 color ()
+        { // Random :: color
+        
+        std::uniform_real_distribution<real> distribution (0.0f, 1.0f);
+        return { distribution (rng), distribution (rng), distribution (rng) };
+        
+        } // Random :: color
     
     }; // Random
+
+std::default_random_engine Random::rng = std::default_random_engine (time(0));
 
 #endif /* Random_hpp */

@@ -36,25 +36,20 @@ void run (uint32_t size)
 int main(int argc, const char * argv[])
     { // main
     
-    
-    std::vector<std::thread> pool;
+    std::vector<std::thread> threads;
     std::vector<uint32_t> resolutions = { 32, 64, 128, 256, 512, 1080 };
     
-    for (uint32_t size : resolutions)
-        pool.push_back(std::thread(run, size));
-
-    for (std::thread& thread : pool)
-        thread.join();
-     
+    srand(time(0));
+    long seed = rand();
     
-    /*
-    auto start = std::chrono::system_clock::now();
-    Rays tracer (512, 512, 128);
-    tracer.render();
-    auto stop = std::chrono::system_clock::now();
-    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    std::cout << diff.count() << '\n';
-     */
+    for (uint32_t size : resolutions)
+        {
+        Random::rng.seed(seed);
+        run (size);
+        }
+        
+    for (std::thread& thread : threads)
+        thread.join();
      
     return 0;
     } // main

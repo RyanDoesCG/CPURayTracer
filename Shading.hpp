@@ -17,6 +17,7 @@ struct Material
     real diffuse;
     real metallic;
     real roughness;
+    real emissive;
     };
 
 #endif /* Shading_hpp */
