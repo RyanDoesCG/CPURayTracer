@@ -45,17 +45,23 @@ struct Rays
         std::uniform_real_distribution<real> uniform      {  0.0f, 1.0f };
     } distributions;
     
-    std::vector<Sphere> spheres = {
-        { {  1.15f, 000.225f, 1.12f  }, 000.75f, 0 },
-        { { -0.2f,  000.0f,  1.25f }, 000.50f, 1 },
-        { { -0.9f, -0.25f,   1.0f  }, 000.25f, 2 },
+    std::vector<Geometry*> scene = {
+        new Sphere { {  0.6f, -0.5f + (000.22f), 1.12f  }, 000.22f, 0 },
+        new Sphere { { -0.2f,  -0.5f + (000.50f), 1.25f }, 000.50f, 1 },
+        new Sphere { { -0.9f,  -0.5f + (000.25f), 1.0f  }, 000.25f, 2 },
         
-        { { -0.55f, -0.375f,  0.75f }, 00.125f, 3 },
-        { { -0.2f, -0.431875,  0.45f }, 00.0625f, 4 },
-        { { -0.4f, -0.431975,  0.25f }, 00.0625f, 5 },
-        { {  0.15f, -0.375f,  0.75f }, 00.125f, 6 },
-        
-        { {  0.0f, -100.5f,  1.5f  }, 100.00f, 7 }};
+        new Sphere { { -0.55f, -0.5f + (00.125f), 0.75f }, 00.125f, 3 },
+        new Sphere { { -0.2f,  -0.5f + (00.0625f), 0.45f }, 00.0625f, 4 },
+        new Sphere { { -0.4f,  -0.5f + (00.0625f), 0.25f }, 00.0625f, 5 },
+        new Sphere { {  0.15f, -0.5f + (00.125f), 0.75f }, 00.125f, 6 },
+
+        //new Sphere { {  0.0f, -100.5f,  1.5f  }, 100.00f, 7 }
+        new Plane { { 0.0f, -0.5f, 0.0f }, { 0.0f, -1.0f, 0.0f }, 7 },
+        new Plane { { 1.2f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, 8 },
+        new Plane { { -1.2f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, 9 },
+        new Plane { { 0.0f, 0.0f, 1.5f }, { 0.0f, 0.0f, 1.0f }, 10 },
+        new Plane { { 0.0f, 1.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, 11 }
+    };
         
     std::vector<Material> materials = {
         { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
@@ -67,7 +73,12 @@ struct Rays
         {Random::color(), 0.3f, 3.0f, 0.0f, 1.0f },
         {Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
 
-        {{ 0.22f, 0.22f, 0.22f }, 0.4f, 3.0f, 0.6f, 0.5f}};
+        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f}
+    };
         
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -106,9 +117,9 @@ struct Rays
         
         // fire the ray through the scene and record the
         // nearest geometric intersection as the hit
-        for (uint32_t s = 0; s < spheres.size(); ++s)
+        for (Geometry* object : scene)
             { // for each sphere
-            Intersection hit = intersect(rays[y][x], spheres[s]);
+            Intersection hit = object->intersect(rays[y][x]);
             if (hit.t < closest.t && hit.t != -1.0f)
                 closest = hit;
             } // for each sphere
