@@ -35,6 +35,14 @@ struct Random
         return { distribution (rng), distribution (rng), distribution (rng) };
         
         } // Random :: color
+        
+    static uint32_t integer ()
+        { // Random :: integer
+        
+        std::uniform_int_distribution<uint32_t> distribution (0, 10);
+        return distribution (rng);
+        
+        } // Random :: integer
     
     }; // Random
 

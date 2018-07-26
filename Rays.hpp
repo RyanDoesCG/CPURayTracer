@@ -17,6 +17,7 @@
 
 #include <numeric>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <random>
 #include <vector>
@@ -40,45 +41,70 @@ struct Rays
     uint32_t height  = 0;
     uint32_t width   = 0;
 
+    uint32_t progress = 0;
+
     struct Distributions {
         std::uniform_real_distribution<real> antialiasing { -1.0f, 1.0f };
         std::uniform_real_distribution<real> uniform      {  0.0f, 1.0f };
+        std::uniform_real_distribution<real> x            { -0.8f, 0.8f };
+        std::uniform_real_distribution<real> r            {  0.032, 0.085};
+        std::uniform_real_distribution<real> e            { 0.0f, 1.0f };
     } distributions;
     
     std::vector<Geometry*> scene = {
-        new Sphere { {  0.6f, -0.5f + (000.22f), 1.12f  }, 000.22f, 0 },
-        new Sphere { { -0.2f,  -0.5f + (000.50f), 1.25f }, 000.50f, 1 },
-        new Sphere { { -0.9f,  -0.5f + (000.25f), 1.0f  }, 000.25f, 2 },
+    
+        // Room Geometry
+        new Plane { { 0.0f, -0.5f, 0.0f }, { 0.0f, -1.0f, 0.0f }, 0},
+        new Plane { { 1.2f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f },  1 },
+        new Plane { { -1.2f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, 2 },
+        new Plane { { 0.0f, 0.0f, 1.5f }, { 0.0f, 0.0f, 1.0f }, 3 },
+        new Plane { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, 4 },
+        new Plane { { 0.0f, 1.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, 5 },
+    
+        // Spheres and Demo Geometry
+        new Sphere { {  0.64f, -0.5 + 0.32f, 0.88 }, 0.32f, 6 },  // left light source
+      //  new Sphere { { -0.64f, -0.5 + 0.32f, 0.88 }, 0.32f, 7 },  // right light source
+        new Sphere { {  0.0f, -0.5 + 0.28f, 0.98 }, 0.28f, 7 },   // back middle ball
         
-        new Sphere { { -0.55f, -0.5f + (00.125f), 0.75f }, 00.125f, 3 },
-        new Sphere { { -0.2f,  -0.5f + (00.0625f), 0.45f }, 00.0625f, 4 },
-        new Sphere { { -0.4f,  -0.5f + (00.0625f), 0.25f }, 00.0625f, 5 },
-        new Sphere { {  0.15f, -0.5f + (00.125f), 0.75f }, 00.125f, 6 },
-
-        //new Sphere { {  0.0f, -100.5f,  1.5f  }, 100.00f, 7 }
-        new Plane { { 0.0f, -0.5f, 0.0f }, { 0.0f, -1.0f, 0.0f }, 7 },
-        new Plane { { 1.2f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, 8 },
-        new Plane { { -1.2f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, 9 },
-        new Plane { { 0.0f, 0.0f, 1.5f }, { 0.0f, 0.0f, 1.0f }, 10 },
-        new Plane { { 0.0f, 1.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, 11 }
-    };
+        new Sphere { {  0.35f, -0.5 + 0.16f, 0.58 }, 0.16f, 8 },  // left light source
+        new Sphere { { -0.35f, -0.5 + 0.08f, 0.58 }, 0.08f, 9 }, // right light source
+        
+        new Sphere { { -0.05f, -0.5 + 0.08f, 0.48 }, 0.08f, 10 },
+        new Sphere { { 0.125f, -0.5 + 0.06f, 0.38 }, 0.06f, 11 },
+        
+        
+        new Sphere { { -0.2f, -0.5 + 0.06f, 0.24 }, 0.06f, 12 },
+        new Sphere { { -0.24f, -0.5 + 0.02f, 0.14 }, 0.02f, 13 },
+        new Sphere { { -0.16f, -0.5 + 0.02f, 0.14 }, 0.02f, 14 },
+        new Sphere { { -0.2f, -0.5 + 0.018f, 0.11 }, 0.016f, 15 }
+    
+        };
         
     std::vector<Material> materials = {
-        { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
-        {{ 0.44f, 0.44f, 0.44f }, 0.2f, 3.0f, 0.12f, 0.5f },
-        { Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
-        
-        {Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
-        {Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
-        {Random::color(), 0.3f, 3.0f, 0.0f, 1.0f },
-        {Random::color(), 1.0f, 0.0f, 0.0f, 0.5f },
+    
+        // Room Materials
+        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
+        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
 
-        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.32f, 0.32f, 0.32f }, 0.4f, 3.0f, 0.6f, 0.5f}
-    };
+        // Sphere and Demo Materials
+        { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
+    //    { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
+        { { 0.42, 0.42, 0.42 }, 0.3f, 3.0f, 0.0f, 0.5f },
+        { Random::color(),  4.0f, 0.0f, 0.0f, 0.5f },
+        { Random::color(),  2.0f, 0.0f, 1.0f, 0.5f },
+        { Random::color(),  1.0f, 0.0f, 0.0f, 0.5f },
+        { Random::color(),  1.0f, 0.0f, 0.06f, 0.5f },
+        { { 0.42, 0.42, 0.42 }, 0.3f, 3.0f, 0.01f, 0.5f },
+        
+        // 2 more
+        { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f },
+        { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f },
+        { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f }
+        };
         
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -98,6 +124,85 @@ struct Rays
         
         for (std::vector<Ray>& r : rays)
             r.resize(width);
+            
+            
+        // a rejection algorithm is used to generate some additional
+        // spheres so that no intersecting spheres can be found
+        std::vector<Sphere*> tempGeometry;
+        std::vector<Material>  tempMaterial;
+        bool intersectionFree = false;
+        uint32_t offset = scene.size() - 1;
+        while (!intersectionFree)
+            { // while scene contains collisions
+            
+            // start by generating a set of spheres with random
+            // sizes and positions
+            uint32_t nSpheres = 0;/// + Random::integer();
+            for (uint32_t id = 0; id < nSpheres; ++id)
+                {
+                // Generate Geometry
+                real radius = distributions.r (Random::rng);
+                real x = distributions.x(Random::rng);
+                real z = 0.2 + distributions.uniform(Random::rng);
+                vec3 position = { x, -0.5f + radius, z };
+                tempGeometry.push_back(new Sphere { position, radius, offset + id});
+                // Generate Material
+                tempMaterial.push_back({
+                    { distributions.uniform(Random::rng), distributions.uniform(Random::rng), distributions.uniform(Random::rng) },
+                    distributions.e(Random::rng),
+                    distributions.e(Random::rng),
+                    distributions.uniform(Random::rng),
+                    distributions.e (Random::rng)});
+                }
+            
+            intersectionFree = true;
+            
+            // then run an intersection test on the spheres in
+            // the local temporary buffer
+            for (uint32_t i = 0; i < tempGeometry.size(); ++i)
+                for (uint32_t j = 0; j < tempGeometry.size(); ++j)
+                    { // for all pairs of geometry
+                    if (i == j) continue;
+                    
+                    real diff = length((tempGeometry[i]->p) - (tempGeometry[j]->p));
+                    real min  = tempGeometry[i]->r + tempGeometry[j]->r;
+                    
+                    if (diff <= min)
+                        intersectionFree = false;
+                    
+                    } // for all pairs of geometry
+            
+            // finally, run an intersection test with the temporary
+            // buffer and the world at large
+            for (uint32_t i = 0; i < offset; ++i)
+                { // for all static spheres
+                
+                Sphere* sphere = static_cast<Sphere*>(scene[i]);
+                
+                for (uint32_t j = 0; j < tempGeometry.size(); ++j)
+                    { // for all temporary geometry
+                    
+                    real diff = length((sphere->p) - (tempGeometry[j]->p));
+                    real min  = sphere->r + tempGeometry[j]->r;
+                    
+                    if (diff <= min)
+                        intersectionFree = false;
+                    
+                    } // for all temporary geometry
+                
+                } // for all static spheres
+            
+            } // while scene contains collisions
+            
+        // once the candidate scene has passed the intersection test
+        // it's data can be appended to the scene for rendering
+        for (uint32_t i = 0; i < tempGeometry.size(); ++i)
+            { // for each candidate geometry
+            
+            scene.push_back(static_cast<Sphere*>(tempGeometry[i]));
+            materials.push_back(tempMaterial[i]);
+            
+            } // for each candidate geometry
 
         } // Rays :: Rays
 
@@ -189,10 +294,12 @@ struct Rays
                     } // for each sample
 
                 framebuffer.setPixel(x, y, color / (real)samples);
-                
+
+                progress = (((x + (height - y) * width) / float(width * height)) * 100);
+                std::cout << width << " : " << progress << std::endl;
                 } // for each pixel
         
-        framebuffer.writeToPPM("ppm/" + std::to_string(width) + "x" + std::to_string(height) + ".ppm");
+        framebuffer.writeToPPM("ppm/" + std::to_string(width) + ".ppm");
         } // Rays :: render
 
     }; // Rays

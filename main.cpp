@@ -10,61 +10,33 @@
 #include <chrono>
 #include <thread>
 
-//  Results
-//
-//  Serial Run
-//      1177
-//      4571
-//      17964
-//      71082
-//      322239
-//
-//  Concurrent Attempt 1
-//
-//
-//
-//
-//
-//
+std::vector<uint32_t> mipchain;
+std::vector<std::thread> threads;
+
+long seed = 0;
 
 void run (uint32_t size)
-    {
-    Rays tracer (size, size, 128, 2);
+    { 
+    Rays tracer (size, size, 64, 2);
     tracer.render();
     }
 
 int main(int argc, const char * argv[])
     { // main
-    
-    /*
-    std::vector<std::thread> threads;
-    std::vector<uint32_t> resolutions = { 32, 64, 128, 256, 512, 1080 };
-    srand(time(0));
-    long seed = rand();
-    for (uint32_t size : resolutions)
-        {
-        Random::rng.seed(seed);
-        run (size);
-        }
-    for (std::thread& thread : threads)
-        thread.join();
-     */
-     
-    //run (64);
-    
-    uint32_t nThreads = 8;
-    std::vector<std::thread> threads;
 
-    srand(time(0));
-    long seed = rand();
-    for (uint32_t id = 0; id < nThreads; ++id)
+    srand(8);
+    seed = rand();
+    Random::rng.seed(seed);
+
+    mipchain = { 128, 256, 512 };
+
+    for (uint32_t id = 0; id < mipchain.size(); ++id)
         {
-        Random::rng.seed(seed);
-        threads.push_back(std::thread(run, 1500));
+        threads.push_back(std::thread(run, mipchain[id]));
         }
-        
-    for (uint32_t id = 0; id < nThreads; ++id)
-        threads[id].join();
+
+    for (std::thread& t : threads)
+        t.join();
 
     return 0;
     } // main
