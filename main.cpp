@@ -17,26 +17,19 @@ long seed = 0;
 
 void run (uint32_t size)
     { 
-    Rays tracer (size, size, 64, 2);
+    Rays tracer (size, size, 64, 2 );
     tracer.render();
     }
 
 int main(int argc, const char * argv[])
     { // main
 
-    srand(8);
-    seed = rand();
-    Random::rng.seed(seed);
+    Random::rng.seed(time(nullptr));
 
-    mipchain = { 128, 256, 512 };
-
-    for (uint32_t id = 0; id < mipchain.size(); ++id)
-        {
-        threads.push_back(std::thread(run, mipchain[id]));
-        }
-
-    for (std::thread& t : threads)
-        t.join();
+    mipchain = { 256 };
+	
+	for (uint32_t mip : mipchain)
+		run (mip);
 
     return 0;
     } // main

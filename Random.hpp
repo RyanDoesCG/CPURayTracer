@@ -27,6 +27,17 @@ struct Random
         while (dot(candidate, candidate) >= 1.0f);
         return candidate;
         } // Random :: randomUnitSphere
+
+	static vec3 unitHemisphere (vec3 n)
+		{ // Random :: unitHemisphere
+		std::uniform_real_distribution<real> dist(-1.0f, 1.0f);
+		vec3 candidate{};
+		do { // while candidate is not in unit sphere
+			candidate = 2.0f * vec3{ dist(rng), dist(rng), dist(rng) };
+		} // while candidate is not in unit sphere
+		while ((dot(candidate, candidate) >= 1.0f) && (dot(candidate, n) < 0.0f));
+		return candidate;
+		} // Random :: unitHemisphere
         
     static vec3 color ()
         { // Random :: color

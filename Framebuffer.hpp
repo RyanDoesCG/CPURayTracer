@@ -12,6 +12,7 @@
 #include "Math.hpp"
 #include <fstream>
 #include <vector>
+#include <limits>
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *

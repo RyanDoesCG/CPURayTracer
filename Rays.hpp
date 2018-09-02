@@ -11,9 +11,11 @@
 
 #include "Framebuffer.hpp"
 #include "Geometric.hpp"
-#include "Shading.hpp"
 #include "Random.hpp"
 #include "Math.hpp"
+#include <thread>
+#include <atomic>
+#include <bitset>
 
 #include <numeric>
 #include <iostream>
@@ -22,6 +24,10 @@
 #include <random>
 #include <vector>
 #include <cmath>
+
+struct Rays;
+
+static void worker (uint32_t id, int32_t xStart, int32_t xStop, int32_t yStart, int32_t yStop, Rays& tracer);
 
 /* * * * * * * * * * * * * * * * * * * * * * *
  *  Rays
@@ -41,71 +47,30 @@ struct Rays
     uint32_t height  = 0;
     uint32_t width   = 0;
 
-    uint32_t progress = 0;
+    std::atomic<uint32_t> pixelsDone;
+    uint32_t pixelsToDo;
+    
+    std::vector<bool> status = { 0, 0, 0, 0 };
 
     struct Distributions {
-        std::uniform_real_distribution<real> antialiasing { -1.0f, 1.0f };
-        std::uniform_real_distribution<real> uniform      {  0.0f, 1.0f };
-        std::uniform_real_distribution<real> x            { -0.8f, 0.8f };
-        std::uniform_real_distribution<real> r            {  0.032, 0.085};
-        std::uniform_real_distribution<real> e            { 0.0f, 1.0f };
+        std::uniform_real_distribution<real> antialiasing { -1.000f, 1.000f };
+        std::uniform_real_distribution<real> uniform      {  0.000f, 1.000f };
+        std::uniform_real_distribution<real> x            { -0.800f, 0.800f };
+        std::uniform_real_distribution<real> r            {  0.032f, 0.085f };
+        std::uniform_real_distribution<real> e            {  0.000f, 1.000f };
     } distributions;
     
-    std::vector<Geometry*> scene = {
+    struct Camera {
+        vec3 position = {{ 0.0f, -0.25f, -0.5f }};
+        vec3 look     = {{ 0.0f,  0.0f,  1.0f }};
+        vec3 ray (real u, real v)
+            { return look - vec3 { u, v, 0.0f }; }
+    } camera;
     
-        // Room Geometry
-        new Plane { { 0.0f, -0.5f, 0.0f }, { 0.0f, -1.0f, 0.0f }, 0},
-        new Plane { { 1.2f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f },  1 },
-        new Plane { { -1.2f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, 2 },
-        new Plane { { 0.0f, 0.0f, 1.5f }, { 0.0f, 0.0f, 1.0f }, 3 },
-        new Plane { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, 4 },
-        new Plane { { 0.0f, 1.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, 5 },
-    
-        // Spheres and Demo Geometry
-        new Sphere { {  0.64f, -0.5 + 0.32f, 0.88 }, 0.32f, 6 },  // left light source
-      //  new Sphere { { -0.64f, -0.5 + 0.32f, 0.88 }, 0.32f, 7 },  // right light source
-        new Sphere { {  0.0f, -0.5 + 0.28f, 0.98 }, 0.28f, 7 },   // back middle ball
-        
-        new Sphere { {  0.35f, -0.5 + 0.16f, 0.58 }, 0.16f, 8 },  // left light source
-        new Sphere { { -0.35f, -0.5 + 0.08f, 0.58 }, 0.08f, 9 }, // right light source
-        
-        new Sphere { { -0.05f, -0.5 + 0.08f, 0.48 }, 0.08f, 10 },
-        new Sphere { { 0.125f, -0.5 + 0.06f, 0.38 }, 0.06f, 11 },
-        
-        
-        new Sphere { { -0.2f, -0.5 + 0.06f, 0.24 }, 0.06f, 12 },
-        new Sphere { { -0.24f, -0.5 + 0.02f, 0.14 }, 0.02f, 13 },
-        new Sphere { { -0.16f, -0.5 + 0.02f, 0.14 }, 0.02f, 14 },
-        new Sphere { { -0.2f, -0.5 + 0.018f, 0.11 }, 0.016f, 15 }
-    
-        };
-        
-    std::vector<Material> materials = {
-    
-        // Room Materials
-        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
-        {{ 0.36f, 0.36f, 0.36f }, 0.4f, 3.0f, 0.6f, 0.5f},
-
-        // Sphere and Demo Materials
-        { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
-    //    { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
-        { { 0.42, 0.42, 0.42 }, 0.3f, 3.0f, 0.0f, 0.5f },
-        { Random::color(),  4.0f, 0.0f, 0.0f, 0.5f },
-        { Random::color(),  2.0f, 0.0f, 1.0f, 0.5f },
-        { Random::color(),  1.0f, 0.0f, 0.0f, 0.5f },
-        { Random::color(),  1.0f, 0.0f, 0.06f, 0.5f },
-        { { 0.42, 0.42, 0.42 }, 0.3f, 3.0f, 0.01f, 0.5f },
-        
-        // 2 more
-        { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f },
-        { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f },
-        { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f }
-        };
-        
+    struct Scene {
+        std::vector<Geometry*> geometry;
+        std::vector<Material*> material;
+    } scene;
 
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
      *
@@ -124,85 +89,76 @@ struct Rays
         
         for (std::vector<Ray>& r : rays)
             r.resize(width);
+
+        scene.geometry = {
+            // Room Geometry
+            new Plane { { 0.0f, -0.5f, 0.0f }, { 0.0f, -1.0f, 0.0f }, 0 },
+            new Plane { { 1.2f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f },   0 },
+            new Plane { { -1.2f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, 0 },
+            new Plane { { 0.0f, 0.0f, 1.5f }, { 0.0f, 0.0f, 1.0f },   0 },
+            new Plane { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, 0 },
+            new Plane { { 0.0f, 1.5f, 0.0f }, { 0.0f, 1.0f, 0.0f },   0 },
             
+            new Mesh  { "models/tracing_bust.mesh", 0 },
             
-        // a rejection algorithm is used to generate some additional
-        // spheres so that no intersecting spheres can be found
-        std::vector<Sphere*> tempGeometry;
-        std::vector<Material>  tempMaterial;
-        bool intersectionFree = false;
-        uint32_t offset = scene.size() - 1;
-        while (!intersectionFree)
-            { // while scene contains collisions
+             new Sphere { {   0.2f, -0.5f + 0.08f, 0.1f }, 0.08f,  0 },
+             new Sphere { {  -0.2f, -0.5f + 0.08f, 0.1f }, 0.08f,  0 },
+             
+
+			 new Sphere{ { 0.0f, 0.75, -0.6f }, 0.16f,  0 }
             
-            // start by generating a set of spheres with random
-            // sizes and positions
-            uint32_t nSpheres = 0;/// + Random::integer();
-            for (uint32_t id = 0; id < nSpheres; ++id)
-                {
-                // Generate Geometry
-                real radius = distributions.r (Random::rng);
-                real x = distributions.x(Random::rng);
-                real z = 0.2 + distributions.uniform(Random::rng);
-                vec3 position = { x, -0.5f + radius, z };
-                tempGeometry.push_back(new Sphere { position, radius, offset + id});
-                // Generate Material
-                tempMaterial.push_back({
-                    { distributions.uniform(Random::rng), distributions.uniform(Random::rng), distributions.uniform(Random::rng) },
-                    distributions.e(Random::rng),
-                    distributions.e(Random::rng),
-                    distributions.uniform(Random::rng),
-                    distributions.e (Random::rng)});
-                }
+            /*
+            // Spheres and Demo Geometry
+            new Sphere { {  0.64f, -0.5 + 0.32f, 0.88 }, 0.32f,  0 },  // left light source
+            new Sphere { {  0.35f, -0.5 + 0.16f, 0.58 }, 0.16f,  0 },  // left light source
+            new Sphere { { -0.35f, -0.5 + 0.08f, 0.58 }, 0.08f,  0 },  // right light source
+            new Sphere { { -0.05f, -0.5 + 0.08f, 0.48 }, 0.08f,  0 },
+            new Sphere { { 0.125f, -0.5 + 0.06f, 0.38 }, 0.06f,  0 },
+            new Sphere { { -0.2f, -0.5 + 0.06f, 0.24 }, 0.06f,   0 },
+            new Sphere { { -0.24f, -0.5 + 0.02f, 0.14 }, 0.02f,  0 },
+            new Sphere { { -0.16f, -0.5 + 0.02f, 0.14 }, 0.02f,  0 },
+            new Sphere { { -0.2f, -0.5 + 0.018f, 0.11 }, 0.016f, 0 },
+             */
             
-            intersectionFree = true;
+            //new Mesh   { "NA", 0 }
+            };
             
-            // then run an intersection test on the spheres in
-            // the local temporary buffer
-            for (uint32_t i = 0; i < tempGeometry.size(); ++i)
-                for (uint32_t j = 0; j < tempGeometry.size(); ++j)
-                    { // for all pairs of geometry
-                    if (i == j) continue;
-                    
-                    real diff = length((tempGeometry[i]->p) - (tempGeometry[j]->p));
-                    real min  = tempGeometry[i]->r + tempGeometry[j]->r;
-                    
-                    if (diff <= min)
-                        intersectionFree = false;
-                    
-                    } // for all pairs of geometry
+            uint32_t id = 0;
+            for (Geometry* geometry : scene.geometry)
+                geometry->id = id++;
+
+        scene.material = {
+            // Room Materials
+            new Material {{ 0.64f, 0.64f, 0.64f }, 0.6f, 3.0f, 0.6f, 0.25f},
+            new Material {{ 0.64f, 0.64f, 0.64f }, 0.6f, 3.0f, 0.6f, 0.25f},
+            new Material {{ 0.64f, 0.64f, 0.64f }, 0.6f, 3.0f, 0.6f, 0.25f},
+            new Material {{ 0.64f, 0.64f, 0.64f }, 0.6f, 3.0f, 0.6f, 0.25f},
+            new Material {{ 0.64f, 0.64f, 0.64f }, 0.6f, 3.0f, 0.6f, 0.25f},
+            new Material {{ 0.64f, 0.64f, 0.64f }, 0.6f, 3.0f, 0.6f, 0.25f},
             
-            // finally, run an intersection test with the temporary
-            // buffer and the world at large
-            for (uint32_t i = 0; i < offset; ++i)
-                { // for all static spheres
-                
-                Sphere* sphere = static_cast<Sphere*>(scene[i]);
-                
-                for (uint32_t j = 0; j < tempGeometry.size(); ++j)
-                    { // for all temporary geometry
-                    
-                    real diff = length((sphere->p) - (tempGeometry[j]->p));
-                    real min  = sphere->r + tempGeometry[j]->r;
-                    
-                    if (diff <= min)
-                        intersectionFree = false;
-                    
-                    } // for all temporary geometry
-                
-                } // for all static spheres
+            new Material { { 0.84f, 0.84f, 0.84f }, 0.8f, 2.5f, 0.4f, 0.25f },
             
-            } // while scene contains collisions
+			new Material { { 1.0f, 0.48823f, 0.0f },  0.4f, 3.0f, 0.24f, 1.0f },
+			new Material { { 0.0f, 1.0f, 0.68823f },  0.4f, 3.0f, 0.24f, 1.0f },
+
+			new Material{ { 1.0f, 1.0f, 1.0f },  0.4f, 3.0f, 0.24f, 0.8f },
             
-        // once the candidate scene has passed the intersection test
-        // it's data can be appended to the scene for rendering
-        for (uint32_t i = 0; i < tempGeometry.size(); ++i)
-            { // for each candidate geometry
-            
-            scene.push_back(static_cast<Sphere*>(tempGeometry[i]));
-            materials.push_back(tempMaterial[i]);
-            
-            } // for each candidate geometry
+            /*
+            // Sphere and Demo Materials
+            new Material { Random::color(),  0.3f, 3.0f, 0.24f, 0.8f },
+            new Material { Random::color(),  4.0f, 0.0f, 0.24f, 0.5f },
+            new Material { Random::color(),  2.0f, 0.0f, 1.0f, 0.5f },
+            new Material { Random::color(),  1.0f, 0.0f, 0.0f, 0.5f },
+            new Material { Random::color(),  1.0f, 0.0f, 0.06f, 0.5f },
+            new Material { { 0.42, 0.42, 0.42 }, 0.3f, 3.0f, 0.01f, 0.5f },
+            new Material { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f },
+            new Material { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f },
+            new Material { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f },
+             */
+        
+            //new Material { vec3{ 0.24, 0.24, 0.24} + Random::color(),  2.0f, 0.0f, 0.16f, 0.64f }
+            };
+        
 
         } // Rays :: Rays
 
@@ -222,10 +178,10 @@ struct Rays
         
         // fire the ray through the scene and record the
         // nearest geometric intersection as the hit
-        for (Geometry* object : scene)
+        for (Geometry* object : scene.geometry)
             { // for each sphere
             Intersection hit = object->intersect(rays[y][x]);
-            if (hit.t < closest.t && hit.t != -1.0f)
+            if (hit.t < closest.t && hit.t >= 0.01f)
                 closest = hit;
             } // for each sphere
 
@@ -237,27 +193,27 @@ struct Rays
             vec3 incoming = -rays[y][x].d;
             
             // roughness normal distortion
-            closest.n[0] += distributions.antialiasing(Random::rng) * materials[closest.id].roughness;
-            closest.n[1] += distributions.antialiasing(Random::rng) * materials[closest.id].roughness;
-            closest.n[2] += distributions.antialiasing(Random::rng) * materials[closest.id].roughness;
+            closest.n[0] += distributions.antialiasing(Random::rng) * scene.material[closest.id]->roughness;
+            closest.n[1] += distributions.antialiasing(Random::rng) * scene.material[closest.id]->roughness;
+            closest.n[2] += distributions.antialiasing(Random::rng) * scene.material[closest.id]->roughness;
             
             // random diffuse probe
             rays[y][x].p = closest.p;
             rays[y][x].d = closest.p - (closest.p + closest.n + Random::unitSphere());
             vec3 diffuse =
-                materials[closest.id].diffuse *
-                materials[closest.id].albedo *
+                scene.material[closest.id]->diffuse *
+                scene.material[closest.id]->albedo *
                 fire (x, y, depth - 1);
                 
             // reflected matallic probe
             rays[y][x].p = closest.p;
             rays[y][x].d = closest.p - (closest.p + closest.n + reflect (incoming, closest.n));
             vec3 metallic =
-                materials[closest.id].metallic *
-                materials[closest.id].albedo *
+                scene.material[closest.id]->metallic *
+                scene.material[closest.id]->albedo *
                 fire (x, y, depth - 1);
 
-            return materials[closest.id].emissive * (diffuse + metallic);
+            return scene.material[closest.id]->emissive * (diffuse + metallic);
             
             } // ray hit something
 
@@ -266,6 +222,12 @@ struct Rays
         return { 0.84f, 0.84f, 0.84f };
 
         } // Rays :: cast
+        
+    void report ()
+        { // Rays :: report
+        float done = pixelsDone.load() / (float)pixelsToDo;
+        std::cout << done << std::endl;
+        } // Rays :: report
         
     /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
      *
@@ -276,32 +238,72 @@ struct Rays
     void render ()
         { // Rays :: render
         
-        for (int32_t y = height - 1; y >= 0; --y)
-            for (int32_t x = 0; x < width; ++x)
-                { // for each pixel
-                
-                vec3 color = { 0.0f, 0.0f, 0.0f };
-                
-                for (uint32_t s = 0; s < samples; ++s)
-                    { // for each sample
-                    real uoffset = distributions.antialiasing (Random::rng);
-                    real voffset = distributions.antialiasing (Random::rng);
-                    real u = -1.0f + (((real(x + uoffset)) / real(width)) * 2.0);
-                    real v =  1.0f - (((real(y + voffset)) / real(height)) * 2.0);
-                    rays[y][x].p = vec3 { 0.0f, 0.0f, -1.0f };
-                    rays[y][x].d = vec3 { 0.0f, 0.0f, 1.0f } - vec3 { u, v, 0.0f };
-                    color = color + fire (x, y, bounces);
-                    } // for each sample
-
-                framebuffer.setPixel(x, y, color / (real)samples);
-
-                progress = (((x + (height - y) * width) / float(width * height)) * 100);
-                std::cout << width << " : " << progress << std::endl;
-                } // for each pixel
+        pixelsDone.store(0);
+        pixelsToDo = width * height;
         
-        framebuffer.writeToPPM("ppm/" + std::to_string(width) + ".ppm");
+        std::vector<std::thread> pool (8);
+        
+		int slice = height / 8;
+		int base = height - 1;
+
+        pool[0] = std::thread(worker, 0, 0, width - 1, base - (slice * 0), base - (slice * 1) + 1, std::ref(*this));
+        pool[1] = std::thread(worker, 1, 0, width - 1, base - (slice * 1), base - (slice * 2) + 1, std::ref(*this));
+        
+        pool[2] = std::thread(worker, 2, 0, width - 1, base - (slice * 2), base - (slice * 3) + 1, std::ref(*this));
+        pool[3] = std::thread(worker, 3, 0, width - 1, base - (slice * 3), base - (slice * 4) + 1, std::ref(*this));
+
+		pool[4] = std::thread(worker, 0, 0, width - 1, base - (slice * 4), base - (slice * 5) + 1, std::ref(*this));
+		pool[5] = std::thread(worker, 1, 0, width - 1, base - (slice * 5), base - (slice * 6) + 1, std::ref(*this));
+
+		pool[6] = std::thread(worker, 2, 0, width - 1, base - (slice * 6), base - (slice * 7) + 1, std::ref(*this));
+		pool[7] = std::thread(worker, 3, 0, width - 1, base - (slice * 7), 0, std::ref(*this));
+
+        pool[0].join();
+        pool[1].join();
+        pool[2].join();
+        pool[3].join();
+
+		pool[4].join();
+		pool[5].join();
+		pool[6].join();
+		pool[7].join();
+
+        framebuffer.writeToPPM(std::to_string(rand()) + ".ppm");
+        
         } // Rays :: render
 
     }; // Rays
+
+void worker (uint32_t id, int32_t xStart, int32_t xStop, int32_t yStart, int32_t yStop, Rays& tracer)
+    { // worker
+    
+    tracer.status[id] = true;
+    
+    for (int32_t y = yStart; y >= yStop; --y)
+        for (int32_t x = xStart; x <= xStop; ++x)
+            { // for each pixel in my workload
+                
+            vec3 color = { 0.0f, 0.0f, 0.0f };
+            
+            for (uint32_t s = 0; s < tracer.samples; ++s)
+                { // for each sample
+                real uoffset = tracer.distributions.antialiasing (Random::rng);
+                real voffset = tracer.distributions.antialiasing (Random::rng);
+                real u = -1.0f + (((real(x + uoffset)) / real(tracer.width))  * 2.0);
+                real v =  1.0f - (((real(y + voffset)) / real(tracer.height)) * 2.0);
+                tracer.rays[y][x].p = tracer.camera.position;
+                tracer.rays[y][x].d = tracer.camera.ray(u, v);
+                color = color + tracer.fire (x, y, tracer.bounces);
+                } // for each sample
+
+            tracer.framebuffer.setPixel(x, y, color / (real)tracer.samples);
+            tracer.pixelsDone++;
+            tracer.report();
+
+            } // for each pixel in my workload
+    
+    tracer.status[id] = false;
+    
+    } // worker
 
 #endif /* Rays_hpp */
